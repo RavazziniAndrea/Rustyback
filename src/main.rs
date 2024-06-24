@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fs};
 use std::path::Path;
 
 /** TODO LIST:
@@ -14,13 +14,21 @@ fn file_exists(path: &str) -> bool {
 }
 
 
+fn read_files(path: &str) -> Vec<String>{
+    let mut files = Vec::new();
+    for line in fs::read_to_string(path).unwrap().lines(){
+        files.push(line.to_string());
+    }
+    files
+}
+
 fn main() {
     println!("One day, I'll be a cool backup utility :)");
 
     let args: Vec<String> = env::args().collect();
     //dbg!(args);
     let mut iter = args.iter();
-    let script_path = iter.next();
+    let _script_path = iter.next();
     let mut file_path = "";
     while let Some(arg) = iter.next(){
         match arg.as_str() {
@@ -35,4 +43,10 @@ fn main() {
             _ => {println!("{} not a valid argument", arg)}
         }
     }
+
+    if file_path.is_empty(){
+        panic!("No filepath provided.")
+    }
+    let lines = read_files(file_path);
+    println!("{:?}", lines);
 }
