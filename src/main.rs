@@ -1,5 +1,6 @@
 use std::{env, fs};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use dirs;
 
 /** TODO LIST:
      - read file to get paths to backup
@@ -9,7 +10,7 @@ use std::path::Path;
      - push to Google Drive (?)
 **/
 
-fn file_exists(path: &str) -> bool {
+fn path_exists(path: &str) -> bool {
     Path::new(path).exists()
 }
 
@@ -20,6 +21,23 @@ fn read_files(path: &str) -> Vec<String>{
         files.push(line.to_string());
     }
     files
+}
+
+fn real_lines(lines: Vec<String>) -> Vec<String>{
+    let mut reals = Vec::new();
+    let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+
+    for line in lines{
+        let line = if line.starts_with("~"){
+            line.replace("~", home_dir.to_str().unwrap())
+        } else {
+            line
+        };
+        if path_exists(line.as_str()){
+            reals.push(line);
+        }
+    }
+    reals
 }
 
 fn main() {
@@ -34,7 +52,7 @@ fn main() {
         match arg.as_str() {
             "-f" => {
                 file_path = iter.next().expect("Path not provided");
-                if file_exists(file_path) {
+                if path_exists(file_path) {
                     println!("EXIXSTE")
                 } else {
                     panic!("{} does not exists. Abort", file_path);
@@ -48,5 +66,6 @@ fn main() {
         panic!("No filepath provided.")
     }
     let lines = read_files(file_path);
-    println!("{:?}", lines);
+    let paths_to_store = real_lines(lines);
+    println!("{:?}", paths_to_store);
 }
