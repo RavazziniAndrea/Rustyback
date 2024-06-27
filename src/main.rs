@@ -6,7 +6,7 @@ use toml::Table;
 
 /** TODO LIST:
      - [DONE] read file to get paths to backup
-     - read config file
+     - [DONE] read config file
      - "procedural" backup (like rsync)
      - create a tarball
      - checksum to get tarballs differences
@@ -53,7 +53,6 @@ fn real_lines(lines: Vec<String>) -> Vec<String>{
 }
 
 
-
 fn path_exists_or_exit(path: Option<&String>){
     if let Some(path) = path {
         if !path_exists(path.as_str()) {
@@ -71,13 +70,16 @@ fn parse_config_file() {
     path_exists_or_exit(Some(&CONFIG_FILE.to_string()));
 
     let config_data = fs::read_to_string(CONFIG_FILE).unwrap();
-    println!("{}", config_data);
+    dbg!("{}", config_data);
     let val = config_data.parse::<Table>().unwrap();
     //let config: Config = toml::from_str(config_data.as_str()).expect("Cant read config file :(");
 
-    println!("{}", val["location"]);
+    dbg!("{}", val["location"]["path"]);
 }
 
+fn rsync_files() {
+    librsync::whole
+}
 
 fn main() {
     println!("One day, I'll be a cool backup utility :)");
@@ -92,17 +94,18 @@ fn main() {
             "-f" => {
                 file_path = Some(iter.next().expect("Path not provided"));
             }
-            _ => {println!("{} not a valid argument", arg)}
+            _ => {eprintln!("{} not a valid argument", arg)}
         }
     }
 
+    //  ---- READ CONFIG FILE -------------------------------------------
     parse_config_file();
 
     path_exists_or_exit(file_path);
 
     let lines = read_files(file_path.unwrap());
     let paths_to_store = real_lines(lines);
-    println!("{:?}", paths_to_store);
+    dbg!("{:?}", paths_to_store);
 
-//  ---- READ CONFIG FILE -------------------------------------------
+    rsync_files();
 }

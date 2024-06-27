@@ -9,3 +9,4 @@ edition = "2021"
 dirs = "5.0.1"
 toml = "0.8.14"
 serde = { version = "1.0.203", features = ["derive"] }
+librsync = "0.2.3"
