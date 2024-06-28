@@ -1,0 +1,11 @@
+{
+  "backup": [
+    "/home/ravazz/Stuff"
+  ],
+  "exclude": [
+    ".venv",
+    ".idea",
+    "target",
+    "folderdue"
+  ]
+}

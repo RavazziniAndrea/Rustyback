@@ -2,7 +2,6 @@ use std::{env, fs};
 use std::path::{Path, PathBuf};
 use dirs;
 use serde::Deserialize;
-use toml::Table;
 
 /**
      - {DONE} read file to get paths to backup
@@ -15,10 +14,11 @@ use toml::Table;
 
 #[derive(Deserialize)]
 struct Config {
-    path: String
+    backup: Vec<String>,
+    exclude: Vec<String>
 }
 
-const CONFIG_FILE: &str = "./config.toml";
+const CONFIG_FILE: &str = "./config.json";
 
 
 fn path_exists(path: &str) -> bool {
@@ -69,19 +69,20 @@ fn path_exists_or_exit(path: Option<&String>){
 fn parse_config_file() {
     path_exists_or_exit(Some(&CONFIG_FILE.to_string()));
 
-    let config_data = fs::read_to_string(CONFIG_FILE).unwrap();
-    dbg!("{}", config_data);
-    let val = config_data.parse::<Table>().unwrap();
-    //let config: Config = toml::from_str(config_data.as_str()).expect("Cant read config file :(");
-
-    dbg!("{}", val["location"]["path"]);
+    let json_content= fs::read_to_string(CONFIG_FILE).unwrap();
+    let json: Config = serde_json::from_str(json_content.as_str()).expect("Not a valid json");
+    println!("{:?}", json.backup);
 }
 
-fn rsync_files() {
-    librsync::whole
-}
 
 fn main() {
+
+
+    //  ---- READ CONFIG FILE -------------------------------------------
+    parse_config_file();
+    std::process::exit(0);
+
+
     println!("One day, I'll be a cool backup utility :)");
 
     let args: Vec<String> = env::args().collect();
@@ -98,14 +99,10 @@ fn main() {
         }
     }
 
-    //  ---- READ CONFIG FILE -------------------------------------------
-    parse_config_file();
 
     path_exists_or_exit(file_path);
 
     let lines = read_files(file_path.unwrap());
     let paths_to_store = real_lines(lines);
     dbg!("{:?}", paths_to_store);
-
-    rsync_files();
 }
