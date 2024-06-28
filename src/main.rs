@@ -4,13 +4,13 @@ use dirs;
 use serde::Deserialize;
 use toml::Table;
 
-/** TODO LIST:
-     - [DONE] read file to get paths to backup
-     - [DONE] read config file
-     - "procedural" backup (like rsync)
-     - create a tarball
-     - checksum to get tarballs differences
-     - push to Google Drive (?)
+/**
+     - {DONE} read file to get paths to backup
+     - {DONE} read config file
+     - [TODO] exclude files
+     - [TODO] create a tarball
+     - [TODO] checksum to get tarballs differences
+     - [TODO] push to Google Drive (?)
 **/
 
 #[derive(Deserialize)]
