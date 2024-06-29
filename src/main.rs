@@ -2,6 +2,9 @@ use std::{env, fs};
 use std::path::{Path, PathBuf};
 use dirs;
 use serde::Deserialize;
+use tar::Builder;
+use ignore::WalkBuilder;
+use once_cell::sync::Lazy;
 
 /**
      - {DONE} read file to get paths to backup
@@ -12,19 +15,18 @@ use serde::Deserialize;
      - [TODO] push to Google Drive (?)
 **/
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Config {
     backup: Vec<String>,
     exclude: Vec<String>
 }
 
 const CONFIG_FILE: &str = "./config.json";
+static HOME_DIR: Lazy<PathBuf> = Lazy::new(|| get_home_path());
 
-
-fn path_exists(path: &str) -> bool {
-    Path::new(path).exists()
+fn get_home_path() -> PathBuf {
+    dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))
 }
-
 
 fn read_files(path: &str) -> Vec<String>{
     let mut files = Vec::new();
@@ -35,74 +37,46 @@ fn read_files(path: &str) -> Vec<String>{
 }
 
 
-fn real_lines(lines: Vec<String>) -> Vec<String>{
-    let mut reals = Vec::new();
-    let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-
-    for line in lines{
-        let line = if line.starts_with("~"){
-            line.replace("~", home_dir.to_str().unwrap())
-        } else {
-            line
-        };
-        if path_exists(line.as_str()){
-            reals.push(line);
-        }
-    }
-    reals
+fn path_exists(path: &str) -> bool {
+    Path::new(&path.replace("~", HOME_DIR.to_str().unwrap())).exists()
 }
 
-
-fn path_exists_or_exit(path: Option<&String>){
-    if let Some(path) = path {
-        if !path_exists(path.as_str()) {
-            eprintln!("Error: {} does not exists. Abort", path);
-            std::process::exit(1);
-        }
-    } else {
-        eprintln!("Error. No file path provided. Abort");
+fn path_exists_or_exit(path: &str){
+    if !path_exists(path) {
+        eprintln!("Error: {} does not exists. Abort", path);
         std::process::exit(1);
     }
 }
 
 
-fn parse_config_file() {
-    path_exists_or_exit(Some(&CONFIG_FILE.to_string()));
+fn parse_config_file() -> Config{
+    path_exists_or_exit(CONFIG_FILE);
 
-    let json_content= fs::read_to_string(CONFIG_FILE).unwrap();
+    let json_content= fs::read_to_string(CONFIG_FILE)
+                                    .unwrap()
+                                    .replace("~", HOME_DIR.to_str().unwrap());
     let json: Config = serde_json::from_str(json_content.as_str()).expect("Not a valid json");
-    println!("{:?}", json.backup);
+    println!("{:?}", &json.backup);
+    json
 }
 
 
+fn backup(config: Config){
+    for path in config.backup{
+        if path_exists(path.as_str()){
+            println!("----> {}",path);
+        }
+    }
+}
+
 fn main() {
-
-
-    //  ---- READ CONFIG FILE -------------------------------------------
-    parse_config_file();
-    std::process::exit(0);
-
 
     println!("One day, I'll be a cool backup utility :)");
 
-    let args: Vec<String> = env::args().collect();
-    //dbg!(args);
-    let mut iter = args.iter();
-    let _script_path = iter.next();
-    let mut file_path = None;
-    while let Some(arg) = iter.next() {
-        match arg.as_str() {
-            "-f" => {
-                file_path = Some(iter.next().expect("Path not provided"));
-            }
-            _ => {eprintln!("{} not a valid argument", arg)}
-        }
-    }
+    //  ---- READ CONFIG FILE -------------------------------------------
+    let config: Config = parse_config_file();
+    println!("{:?}", config);
 
+    backup(config);
 
-    path_exists_or_exit(file_path);
-
-    let lines = read_files(file_path.unwrap());
-    let paths_to_store = real_lines(lines);
-    dbg!("{:?}", paths_to_store);
 }
