@@ -1,6 +1,7 @@
 use std::{env, fs};
 use std::path::{Path, PathBuf};
 use dirs;
+use glob::Pattern;
 use serde::Deserialize;
 use tar::Builder;
 use ignore::WalkBuilder;
@@ -69,12 +70,32 @@ fn backup(config: Config){
         }
         let mut walker = WalkBuilder::new(path);
         walker.standard_filters(false);
-        for exclude in &config.exclude{
-            println!("{} <-----", exclude);
-            walker.add_ignore(exclude);
+        // for exclude in &config.exclude{
+        //     println!("{} <-----", exclude);
+        //     walker.add_ignore(exclude);
+        // }
+        let iter = walker.build();
+        for result  in iter{
+            if result.is_err(){continue;}
+            let entry = result.unwrap();
+            let path = entry.path();
+            let relative_path = path.strip_prefix(".");
+            if relative_path.is_err(){continue;}
+            let relative_path = relative_path.unwrap();
+
+            // Verifica se il file corrisponde a uno dei pattern di esclusione
+            if config.exclude.iter().any(|pattern| {
+                Pattern::new(pattern)
+                    .unwrap()
+                    .matches_path(relative_path)
+            }) {
+                println!("qui---");
+                continue;
+            }
+            println!("------>>>>> {:?}", entry.clone());
+
+            // println!("{:?}", entry.clone());
         }
-        walker.build();
-        println!("{:?}", walker);
     }
 }
 
@@ -84,7 +105,7 @@ fn main() {
 
     //  ---- READ CONFIG FILE -------------------------------------------
     let config: Config = parse_config_file();
-    println!("{:?}", config);
+    // println!("{:?}", config);
 
     backup(config);
 
