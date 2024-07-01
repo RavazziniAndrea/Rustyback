@@ -63,9 +63,18 @@ fn parse_config_file() -> Config{
 
 fn backup(config: Config){
     for path in config.backup{
-        if path_exists(path.as_str()){
-            println!("----> {}",path);
+        if ! path_exists(path.as_str()){
+            println!("{} doesn't exists. Skip", path);
+            continue;
         }
+        let mut walker = WalkBuilder::new(path);
+        walker.standard_filters(false);
+        for exclude in &config.exclude{
+            println!("{} <-----", exclude);
+            walker.add_ignore(exclude);
+        }
+        walker.build();
+        println!("{:?}", walker);
     }
 }
 
