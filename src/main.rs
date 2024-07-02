@@ -70,31 +70,20 @@ fn backup(config: Config){
         }
         let mut walker = WalkBuilder::new(path);
         walker.standard_filters(false);
-        // for exclude in &config.exclude{
-        //     println!("{} <-----", exclude);
-        //     walker.add_ignore(exclude);
-        // }
         let iter = walker.build();
         for result  in iter{
             if result.is_err(){continue;}
             let entry = result.unwrap();
             let path = entry.path();
-            let relative_path = path.strip_prefix(".");
-            if relative_path.is_err(){continue;}
-            let relative_path = relative_path.unwrap();
 
             // Verifica se il file corrisponde a uno dei pattern di esclusione
             if config.exclude.iter().any(|pattern| {
-                Pattern::new(pattern)
-                    .unwrap()
-                    .matches_path(relative_path)
+                path.to_str().unwrap_or_else(||{pattern}).contains(pattern)
             }) {
-                println!("qui---");
+                println!("skippo {:?}", path);
                 continue;
             }
             println!("------>>>>> {:?}", entry.clone());
-
-            // println!("{:?}", entry.clone());
         }
     }
 }
