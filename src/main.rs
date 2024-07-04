@@ -1,11 +1,12 @@
-use std::{env, fs};
+use std::{fs, fs::File, io};
 use std::path::{Path, PathBuf};
 use dirs;
-use glob::Pattern;
 use serde::Deserialize;
 use tar::Builder;
 use ignore::WalkBuilder;
 use once_cell::sync::Lazy;
+use flate2::Compression;
+use flate2::write::GzEncoder;
 
 /**
      - {DONE} read file to get paths to backup
@@ -18,8 +19,15 @@ use once_cell::sync::Lazy;
 
 #[derive(Deserialize, Debug)]
 struct Config {
+    tarball: Tarball,
     backup: Vec<String>,
     exclude: Vec<String>
+}
+
+#[derive(Deserialize, Debug)]
+struct Tarball {
+    name: String,
+    path: String
 }
 
 const CONFIG_FILE: &str = "./config.json";
@@ -62,7 +70,22 @@ fn parse_config_file() -> Config{
 }
 
 
-fn backup(config: Config){
+fn backup(config: Config) -> Result<(), std::io::Error>{
+    let tarball = File::create(config.tarball.name)?;
+    let enc = GzEncoder::new(tarball, Compression::default());
+    let mut tar = tar::Builder::new(enc);
+    let path = config.tarball.path;
+    for f in config.backup{
+        tar.append_path(f);
+    }
+    tar.finish();
+    Ok(())
+}
+
+
+fn OLD_backup(config: Config) -> io::Result<()>{
+    let tar = File::create("backup.tar")?;
+    let mut builder = Builder::new(tar);
     for path in config.backup{
         if ! path_exists(path.as_str()){
             println!("{} doesn't exists. Skip", path);
@@ -79,13 +102,16 @@ fn backup(config: Config){
             // Verifica se il file corrisponde a uno dei pattern di esclusione
             if config.exclude.iter().any(|pattern| {
                 path.to_str().unwrap_or_else(||{pattern}).contains(pattern)
-            }) {
+            }){
                 println!("skippo {:?}", path);
                 continue;
             }
-            println!("------>>>>> {:?}", entry.clone());
+            println!("------>>>>> {:?} -- {:?}", path, ".");
+            builder.append_file(path, &mut File::open(path).unwrap()).unwrap();
         }
     }
+    builder.finish()?;
+    Ok(())
 }
 
 fn main() {
@@ -96,6 +122,7 @@ fn main() {
     let config: Config = parse_config_file();
     // println!("{:?}", config);
 
-    backup(config);
+    let res = backup(config);
+    println!("{:?}", res);
 
 }
