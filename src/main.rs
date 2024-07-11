@@ -1,5 +1,6 @@
-use std::{fs, fs::File, io};
+use std::{env, fs, fs::File, io};
 use std::path::{Path, PathBuf};
+use std::process::exit;
 use dirs;
 use serde::Deserialize;
 use tar::Builder;
@@ -7,6 +8,7 @@ use ignore::WalkBuilder;
 use once_cell::sync::Lazy;
 use flate2::Compression;
 use flate2::write::GzEncoder;
+use whoami::Platform::MacOS;
 
 /**
      - {DONE} read file to get paths to backup
@@ -70,27 +72,55 @@ fn parse_config_file() -> Config{
 }
 
 
-fn backup(config: Config) -> Result<(), std::io::Error>{
+fn old_backup(config: Config) -> Result<(), std::io::Error>{
     let tarball = File::create(config.tarball.name)?;
     let enc = GzEncoder::new(tarball, Compression::default());
     let mut tar = tar::Builder::new(enc);
     let path = config.tarball.path;
     for f in config.backup{
-        tar.append_path(f);
+        println!("{}",f);
+        //tar.append_path();
     }
-    tar.finish();
+    let _ = tar.finish();
     Ok(())
 }
 
 
-fn OLD_backup(config: Config) -> io::Result<()>{
+fn backup(config: Config) -> io::Result<()>{
     let tar = File::create("backup.tar")?;
     let mut builder = Builder::new(tar);
+
+
+
+    let home = get_home_path();
+    let mut relative_paths:Vec<&Path> = Vec::new();
+    'outer: for s_path in config.backup{
+
+
+        let path = PathBuf::from(s_path.clone());
+        let mut components = path.components();
+
+
+
+        let home_components = home.components();
+        for home_comp in home_components{
+            if home_comp != components.next().unwrap(){
+                println!("eeeh bekkato");
+                continue 'outer;
+            }
+        }
+        let p = components.as_path();
+        relative_paths.push(p);
+    }
+/*
     for path in config.backup{
         if ! path_exists(path.as_str()){
             println!("{} doesn't exists. Skip", path);
             continue;
         }
+
+        whoami::realname();
+
         let mut walker = WalkBuilder::new(path);
         walker.standard_filters(false);
         let iter = walker.build();
@@ -106,13 +136,21 @@ fn OLD_backup(config: Config) -> io::Result<()>{
                 println!("skippo {:?}", path);
                 continue;
             }
-            println!("------>>>>> {:?} -- {:?}", path, ".");
-            builder.append_file(path, &mut File::open(path).unwrap()).unwrap();
+            //println!("------>>>>> {:?} -- {:?}", path, ".");
+            /*
+            let mut file = File::open(path);
+            if file.is_err(){
+                println!("Errorre: {:?}",file);
+                continue;
+            }
+            */
+            //builder.append_file(path, &mut file.unwrap()).unwrap_or_else(|e| (println!("errorre: {}",e)));
         }
-    }
+    }*/
     builder.finish()?;
     Ok(())
 }
+
 
 fn main() {
 
@@ -121,6 +159,16 @@ fn main() {
     //  ---- READ CONFIG FILE -------------------------------------------
     let config: Config = parse_config_file();
     // println!("{:?}", config);
+
+    let cur_path = env::current_dir();
+    println!("{:?}", cur_path.unwrap().display());
+
+    let home = get_home_path();
+    let curr = env::set_current_dir(Path::new(&home));
+    if curr.is_err(){
+        println!("Cant get home. Rip");
+        exit(1 );
+    }
 
     let res = backup(config);
     println!("{:?}", res);
